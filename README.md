@@ -16,7 +16,10 @@ Installable sur mobile (iOS / Android) et ordinateur (Windows / Mac / Linux), ut
 2. **Affichage du Calendrier** :
    - **Vue Jour** : Grille horaire 8h00 - 20h00 proportionnelle à la durée des cours, centrage automatique sur le cours suivant.
    - **Vue Semaine** : Grille multi-colonnes scrollable horizontalement avec découpage intelligent du titre sur deux lignes.
-   - **Support tactile** : Swipe gauche / droite sur smartphone pour naviguer de jour en jour.
+   - **Support tactile** : Swipe gauche / droite sur **toute la grille** (heures, en-tête des jours, colonnes de cours) et sur la barre de date :
+     - en **vue Jour**, il change de jour ;
+     - en **vue Semaine**, il change de semaine. Comme la grille défile horizontalement, le swipe change de semaine quand la grille est à son extrémité (gauche pour revenir en arrière, droite pour avancer) ; entre les deux, le geste fait simplement défiler la grille.
+   - **Mode conservé** : ouvrir le détail d'un cours ne change plus de mode, vous restez en vue Jour ou en vue Semaine. Seul un clic sur une zone vide d'une colonne ou sur l'en-tête d'un jour en vue Semaine ouvre ce jour.
    - **Mode Détail en vue Jour** : Affichage compact ou détaillé avec intégration directe des tâches urgentes à l'intérieur du bloc de cours et case à cocher rapide.
    - **Filtres d'affichage** : Option pour masquer les week-ends sans cours, et zoom/échelle de la police personnalisable (0.70x à 2.00x).
 
@@ -116,4 +119,3 @@ Pour déployer :
 2. Sur GitHub, allez dans **Settings** > **Pages**.
 3. Dans **Build and deployment** > **Source**, sélectionnez **GitHub Actions**.
 4. Le workflow construira l'application et la déploiera automatiquement sur `https://<votre-pseudo>.github.io/<nom-du-repo>/`.
-
