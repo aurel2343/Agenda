@@ -5,10 +5,12 @@
  * 
  * Rôles et responsabilités :
  * - Gestion de l'état global (cours, tâches, date sélectionnée, préférences)
- * - Navigation entre la Vue Jour et la Vue Semaine
+ * - Navigation entre la Vue Jour et la Vue Semaine (le mode choisi est conservé
+ *   quand on ouvre le détail d'un cours)
  * - Rendu de la grille horaire proportionnelle (8h - 20h)
  * - Défilement automatique vers le prochain cours
- * - Support des gestes tactiles (swipe gauche/droite pour changer de jour)
+ * - Support des gestes tactiles : swipe gauche/droite sur toute la grille pour
+ *   changer de jour (vue Jour) ou de semaine (vue Semaine)
  * - Synchronisation et mise en cache locale des calendriers ICS
  * - Nettoyage automatique des tâches terminées après 12h
  * ═══════════════════════════════════════════════════════════════════════════════
@@ -66,8 +68,8 @@ const permitBrutalBreak = (text) => {
 export default function App() {
   const horizontalScrollRef = useRef(null);
   const verticalScrollRef = useRef(null);
-  const touchStartXRef = useRef(null);
-  const touchStartYRef = useRef(null);
+  // Mémorise l'état du geste tactile en cours (position de départ, scroll horizontal, bords atteints)
+  const swipeRef = useRef(null);
   const savingTaskRef = useRef(false);
 
   // États applicatifs
@@ -364,47 +366,59 @@ export default function App() {
   };
 
   /**
-   * Gestion des gestes tactiles sur le sous-en-tête (swipe gauche/droite).
-   * - En mode jour  : swipe → jour suivant / précédent.
-   * - En mode semaine : swipe → semaine suivante / précédente.
-   * Placés sur le sous-en-tête pour éviter le conflit avec le scroll
-   * horizontal de la grille (overflow-x: auto sur .columns-scroll-area).
+   * Gestion du swipe gauche/droite (changement de jour ou de semaine).
+   * - Vue Jour    : swipe → jour suivant / précédent.
+   * - Vue Semaine : swipe → semaine suivante / précédente.
+   *
+   * Le swipe est actif sur TOUTE la grille (colonne des heures, en-tête des jours,
+   * colonnes de cours) ainsi que sur le sous-en-tête.
+   *
+   * En vue Semaine, la grille défile horizontalement (.columns-scroll-area). Pour ne pas
+   * entrer en conflit avec ce défilement, sur la grille un swipe ne change de semaine que
+   * si le geste n'a pas fait défiler la grille et part d'un bord :
+   *   - swipe vers la droite → semaine précédente si la grille est à son extrémité gauche ;
+   *   - swipe vers la gauche → semaine suivante si la grille est à son extrémité droite.
+   * Si toute la semaine tient à l'écran (pas de défilement), le swipe fonctionne partout.
    */
-  const handleSubHeaderTouchStart = (e) => {
-    touchStartXRef.current = e.touches[0].clientX;
-    touchStartYRef.current = e.touches[0].clientY;
+  const SWIPE_THRESHOLD = 60; // Déplacement horizontal minimal (px) pour valider un swipe
+
+  const startSwipe = (e, respectScroll) => {
+    const touch = e.touches[0];
+    const scrollEl = horizontalScrollRef.current;
+    const scrollLeft = scrollEl ? scrollEl.scrollLeft : 0;
+    swipeRef.current = {
+      x: touch.clientX,
+      y: touch.clientY,
+      scrollLeft,
+      respectScroll,
+      atLeftEdge: !respectScroll || !scrollEl || scrollLeft <= 1,
+      atRightEdge: !respectScroll || !scrollEl || scrollLeft + scrollEl.clientWidth >= scrollEl.scrollWidth - 1,
+    };
   };
 
-  const handleSubHeaderTouchEnd = (e) => {
-    if (touchStartXRef.current === null) return;
-    const diffX = e.changedTouches[0].clientX - touchStartXRef.current;
-    const diffY = e.changedTouches[0].clientY - touchStartYRef.current;
-    // Seuil : déplacement horizontal > 60px et dominant sur le vertical
-    if (Math.abs(diffX) > 60 && Math.abs(diffX) > Math.abs(diffY)) {
-      if (diffX > 0) handlePrev(); // swipe droite → précédent
-      else handleNext();           // swipe gauche → suivant
+  const endSwipe = (e) => {
+    const swipe = swipeRef.current;
+    swipeRef.current = null;
+    if (!swipe) return;
+
+    const diffX = e.changedTouches[0].clientX - swipe.x;
+    const diffY = e.changedTouches[0].clientY - swipe.y;
+    // Le geste doit être assez long et surtout horizontal (sinon c'est un scroll vertical)
+    if (Math.abs(diffX) <= SWIPE_THRESHOLD || Math.abs(diffX) <= Math.abs(diffY)) return;
+
+    // Si la grille a défilé pendant le geste, c'était un scroll horizontal, pas un swipe
+    const scrollEl = horizontalScrollRef.current;
+    if (swipe.respectScroll && scrollEl && Math.abs(scrollEl.scrollLeft - swipe.scrollLeft) > 1) return;
+
+    if (diffX > 0) {
+      if (swipe.atLeftEdge) handlePrev(); // swipe vers la droite → précédent
+    } else if (swipe.atRightEdge) {
+      handleNext();                       // swipe vers la gauche → suivant
     }
-    touchStartXRef.current = null;
-    touchStartYRef.current = null;
   };
 
-  // Handlers maintenus sur la grille pour la compatibilité vue jour (scroll vertical)
-  const handleTouchStart = (e) => {
-    if (viewMode !== 'day') return;
-    touchStartXRef.current = e.touches[0].clientX;
-    touchStartYRef.current = e.touches[0].clientY;
-  };
-
-  const handleTouchEnd = (e) => {
-    if (viewMode !== 'day' || touchStartXRef.current === null) return;
-    const diffX = e.changedTouches[0].clientX - touchStartXRef.current;
-    const diffY = e.changedTouches[0].clientY - touchStartYRef.current;
-    if (Math.abs(diffX) > 60 && Math.abs(diffX) > Math.abs(diffY)) {
-      if (diffX > 0) handlePrev();
-      else handleNext();
-    }
-    touchStartXRef.current = null;
-    touchStartYRef.current = null;
+  const cancelSwipe = () => {
+    swipeRef.current = null;
   };
 
   const hourHeight = (viewMode === 'day' && detailMode) ? BASE_HOUR_HEIGHT * 1.5 : BASE_HOUR_HEIGHT;
@@ -460,7 +474,12 @@ export default function App() {
           backgroundColor: course.color,
           padding: isWeek ? '3px 4px' : '6px 8px',
         }}
-        onClick={() => setSelectedCourse(course)}
+        onClick={(e) => {
+          // stopPropagation : sans ça le clic remonte à .day-column, qui bascule en vue Jour.
+          // On ouvre uniquement le détail et on reste dans le mode (Jour/Semaine) courant.
+          e.stopPropagation();
+          setSelectedCourse(course);
+        }}
       >
         <div>
           <div className="course-time" style={{ fontSize: `${infoSize}px`, fontWeight: 'bold' }}>
@@ -613,8 +632,9 @@ export default function App() {
       {/* SOUS EN-TÊTE — swipe gauche/droite pour changer de jour (mode jour) ou de semaine (mode semaine) */}
       <div
         className="sub-header"
-        onTouchStart={handleSubHeaderTouchStart}
-        onTouchEnd={handleSubHeaderTouchEnd}
+        onTouchStart={(e) => startSwipe(e, false)}
+        onTouchEnd={endSwipe}
+        onTouchCancel={cancelSwipe}
       >
         <button type="button" className="arrow-btn" onClick={handlePrev}>‹</button>
 
@@ -641,12 +661,13 @@ export default function App() {
         <button type="button" className="arrow-btn" onClick={handleNext}>›</button>
       </div>
 
-      {/* GRILLE HORAIRE */}
+      {/* GRILLE HORAIRE — swipe actif sur toute la grille (heures, en-tête, colonnes de cours) */}
       <div
         className="calendar-viewport"
         ref={verticalScrollRef}
-        onTouchStart={handleTouchStart}
-        onTouchEnd={handleTouchEnd}
+        onTouchStart={(e) => startSwipe(e, true)}
+        onTouchEnd={endSwipe}
+        onTouchCancel={cancelSwipe}
       >
         <div
           className="grid-body"
@@ -691,8 +712,8 @@ export default function App() {
               </div>
             )}
 
-            {/* Colonnes cours */}
-            <div className="days-columns-row">
+            {/* Colonnes cours — la classe --day / --week fixe la largeur de la rangée (voir index.css) */}
+            <div className={`days-columns-row days-columns-row--${viewMode}`}>
               {daysToDisplay.map((day, i) => {
                 if (viewMode === 'day' && !isSameDay(day, selectedDate)) return null;
 
@@ -705,6 +726,8 @@ export default function App() {
                       height: `${TOTAL_HOURS * hourHeight}px`,
                     }}
                     onClick={() => {
+                      // Clic sur une zone vide de la colonne en vue Semaine → ouvre ce jour.
+                      // (Les blocs de cours stoppent la propagation : ils gardent le mode courant.)
                       if (viewMode === 'week') switchToDayView(day);
                     }}
                   >
