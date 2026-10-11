@@ -243,6 +243,18 @@ html, body, #root {
 .days-columns-row {
   display: flex;
   position: relative;
+}
+
+/* Vue Jour : une seule colonne qui occupe toute la largeur disponible.
+   (Ne PAS utiliser width: max-content ici : la colonne a width: 100%, un pourcentage
+   d'un parent en max-content s'effondre et il ne reste qu'une fine bande de couleur.) */
+.days-columns-row--day {
+  width: 100%;
+}
+
+/* Vue Semaine : colonnes de largeur fixe (140px), la rangée s'étend pour toutes les contenir
+   et .columns-scroll-area gère le défilement horizontal. */
+.days-columns-row--week {
   width: max-content;
 }
 
