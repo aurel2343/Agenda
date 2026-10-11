@@ -58,6 +58,8 @@ const DAY_END_HOUR = 20;      // Fin de journée : 20h00
 const TOTAL_HOURS = DAY_END_HOUR - DAY_START_HOUR; // 12 tranches d'heures
 const WEEK_HEADER_HEIGHT = 48; // Hauteur de l'en-tête en vue semaine
 const BASE_HOUR_HEIGHT = 65;   // Hauteur de base en pixels d'une tranche horaire
+const WEEK_COLUMN_WIDTH = 140; // Largeur en pixels d'une colonne de jour en vue semaine
+const FRIDAY_INDEX = 4;        // Position du vendredi dans la semaine (lundi = 0)
 
 // Insère un zero-width space entre chaque caractère pour forcer les retours à la ligne en vue semaine
 const permitBrutalBreak = (text) => {
@@ -70,6 +72,8 @@ export default function App() {
   const verticalScrollRef = useRef(null);
   // Mémorise l'état du geste tactile en cours (position de départ, scroll horizontal, bords atteints)
   const swipeRef = useRef(null);
+  // Position où doit atterrir la grille après un changement de semaine : 'monday' ou 'friday'
+  const pendingWeekScrollRef = useRef(null);
   const savingTaskRef = useRef(false);
 
   // États applicatifs
@@ -309,7 +313,7 @@ export default function App() {
 
     return {
       daysToDisplay: days,
-      columnWidth: viewMode === 'week' ? 140 : '100%',
+      columnWidth: viewMode === 'week' ? WEEK_COLUMN_WIDTH : '100%',
     };
   }, [selectedDate, hideWeekends, courses, viewMode]);
 
@@ -336,21 +340,44 @@ export default function App() {
   }, [selectedDate, viewMode, courses, detailMode]);
 
   // Navigation
+  // - Vue Jour    : jour suivant / précédent.
+  // - Vue Semaine : semaine suivante → on arrive sur le LUNDI ; semaine précédente → on arrive sur le VENDREDI.
+  //   (valable pour les flèches et le swipe : la date sélectionnée devient ce lundi / ce vendredi
+  //   et la grille est positionnée dessus, voir l'effet de défilement horizontal plus bas)
   const handleNext = () => {
-    let n = viewMode === 'day' ? addDays(selectedDate, 1) : addWeeks(selectedDate, 1);
-    if (viewMode === 'day' && hideWeekends) {
+    if (viewMode === 'week') {
+      pendingWeekScrollRef.current = 'monday';
+      setSelectedDate(startOfWeek(addWeeks(selectedDate, 1), { weekStartsOn: 1 }));
+      return;
+    }
+    let n = addDays(selectedDate, 1);
+    if (hideWeekends) {
       while (isWeekend(n) && !courses.some(c => isSameDay(c.start, n))) n = addDays(n, 1);
     }
     setSelectedDate(n);
   };
 
   const handlePrev = () => {
-    let p = viewMode === 'day' ? subDays(selectedDate, 1) : subWeeks(selectedDate, 1);
-    if (viewMode === 'day' && hideWeekends) {
+    if (viewMode === 'week') {
+      pendingWeekScrollRef.current = 'friday';
+      setSelectedDate(addDays(startOfWeek(subWeeks(selectedDate, 1), { weekStartsOn: 1 }), FRIDAY_INDEX));
+      return;
+    }
+    let p = subDays(selectedDate, 1);
+    if (hideWeekends) {
       while (isWeekend(p) && !courses.some(c => isSameDay(c.start, p))) p = subDays(p, 1);
     }
     setSelectedDate(p);
   };
+
+  // Après un changement de semaine, positionne la grille sur le lundi (semaine suivante)
+  // ou sur le vendredi (semaine précédente). Exécuté une fois la nouvelle semaine rendue.
+  useEffect(() => {
+    if (viewMode !== 'week' || !pendingWeekScrollRef.current) return;
+    const left = pendingWeekScrollRef.current === 'friday' ? FRIDAY_INDEX * WEEK_COLUMN_WIDTH : 0;
+    pendingWeekScrollRef.current = null;
+    horizontalScrollRef.current?.scrollTo({ left });
+  }, [selectedDate, viewMode]);
 
   const jumpToToday = () => {
     let t = new Date();
@@ -379,6 +406,8 @@ export default function App() {
    *   - swipe vers la droite → semaine précédente si la grille est à son extrémité gauche ;
    *   - swipe vers la gauche → semaine suivante si la grille est à son extrémité droite.
    * Si toute la semaine tient à l'écran (pas de défilement), le swipe fonctionne partout.
+   *
+   * Arrivée : semaine précédente → vendredi, semaine suivante → lundi (voir handlePrev / handleNext).
    */
   const SWIPE_THRESHOLD = 60; // Déplacement horizontal minimal (px) pour valider un swipe
 
