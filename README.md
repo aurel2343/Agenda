@@ -18,7 +18,7 @@ Installable sur mobile (iOS / Android) et ordinateur (Windows / Mac / Linux), ut
    - **Vue Semaine** : Grille multi-colonnes scrollable horizontalement avec découpage intelligent du titre sur deux lignes.
    - **Support tactile** : Swipe gauche / droite sur **toute la grille** (heures, en-tête des jours, colonnes de cours) et sur la barre de date :
      - en **vue Jour**, il change de jour ;
-     - en **vue Semaine**, il change de semaine. Comme la grille défile horizontalement, le swipe change de semaine quand la grille est à son extrémité (gauche pour revenir en arrière, droite pour avancer) ; entre les deux, le geste fait simplement défiler la grille.
+     - en **vue Semaine**, il change de semaine. Comme la grille défile horizontalement, le swipe change de semaine quand la grille est à son extrémité (gauche pour revenir en arrière, droite pour avancer) ; entre les deux, le geste fait simplement défiler la grille. En changeant de semaine (swipe ou flèches), on arrive sur le **vendredi** de la semaine précédente ou sur le **lundi** de la semaine suivante.
    - **Mode conservé** : ouvrir le détail d'un cours ne change plus de mode, vous restez en vue Jour ou en vue Semaine. Seul un clic sur une zone vide d'une colonne ou sur l'en-tête d'un jour en vue Semaine ouvre ce jour.
    - **Mode Détail en vue Jour** : Affichage compact ou détaillé avec intégration directe des tâches urgentes à l'intérieur du bloc de cours et case à cocher rapide.
    - **Filtres d'affichage** : Option pour masquer les week-ends sans cours, et zoom/échelle de la police personnalisable (0.70x à 2.00x).
