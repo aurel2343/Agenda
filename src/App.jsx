@@ -1,3 +1,19 @@
+/**
+ * ═══════════════════════════════════════════════════════════════════════════════
+ * AGENDA ESME — App.jsx
+ * Composant principal de la Progressive Web App (PWA).
+ * 
+ * Rôles et responsabilités :
+ * - Gestion de l'état global (cours, tâches, date sélectionnée, préférences)
+ * - Navigation entre la Vue Jour et la Vue Semaine
+ * - Rendu de la grille horaire proportionnelle (8h - 20h)
+ * - Défilement automatique vers le prochain cours
+ * - Support des gestes tactiles (swipe gauche/droite pour changer de jour)
+ * - Synchronisation et mise en cache locale des calendriers ICS
+ * - Nettoyage automatique des tâches terminées après 12h
+ * ═══════════════════════════════════════════════════════════════════════════════
+ */
+
 import React, { useState, useEffect, useMemo, useRef } from 'react';
 import {
   format,
@@ -34,12 +50,14 @@ import AllTasksModal from './components/AllTasksModal';
 import DayTasksModal from './components/DayTasksModal';
 import SettingsView from './components/SettingsView';
 
-const DAY_START_HOUR = 8;
-const DAY_END_HOUR = 20;
-const TOTAL_HOURS = DAY_END_HOUR - DAY_START_HOUR;
-const WEEK_HEADER_HEIGHT = 48;
-const BASE_HOUR_HEIGHT = 65; // Hauteur par défaut d'une heure dans la grille web
+// Constantes de mise en page de la grille horaire
+const DAY_START_HOUR = 8;     // Début de journée : 8h00
+const DAY_END_HOUR = 20;      // Fin de journée : 20h00
+const TOTAL_HOURS = DAY_END_HOUR - DAY_START_HOUR; // 12 tranches d'heures
+const WEEK_HEADER_HEIGHT = 48; // Hauteur de l'en-tête en vue semaine
+const BASE_HOUR_HEIGHT = 65;   // Hauteur de base en pixels d'une tranche horaire
 
+// Insère un zero-width space entre chaque caractère pour forcer les retours à la ligne en vue semaine
 const permitBrutalBreak = (text) => {
   if (!text) return '';
   return text.split('').join('\u200B');
@@ -345,7 +363,32 @@ export default function App() {
     setViewMode('day');
   };
 
-  // Gestion des gestes tactiles (swipe gauche/droite pour changer de jour)
+  /**
+   * Gestion des gestes tactiles sur le sous-en-tête (swipe gauche/droite).
+   * - En mode jour  : swipe → jour suivant / précédent.
+   * - En mode semaine : swipe → semaine suivante / précédente.
+   * Placés sur le sous-en-tête pour éviter le conflit avec le scroll
+   * horizontal de la grille (overflow-x: auto sur .columns-scroll-area).
+   */
+  const handleSubHeaderTouchStart = (e) => {
+    touchStartXRef.current = e.touches[0].clientX;
+    touchStartYRef.current = e.touches[0].clientY;
+  };
+
+  const handleSubHeaderTouchEnd = (e) => {
+    if (touchStartXRef.current === null) return;
+    const diffX = e.changedTouches[0].clientX - touchStartXRef.current;
+    const diffY = e.changedTouches[0].clientY - touchStartYRef.current;
+    // Seuil : déplacement horizontal > 60px et dominant sur le vertical
+    if (Math.abs(diffX) > 60 && Math.abs(diffX) > Math.abs(diffY)) {
+      if (diffX > 0) handlePrev(); // swipe droite → précédent
+      else handleNext();           // swipe gauche → suivant
+    }
+    touchStartXRef.current = null;
+    touchStartYRef.current = null;
+  };
+
+  // Handlers maintenus sur la grille pour la compatibilité vue jour (scroll vertical)
   const handleTouchStart = (e) => {
     if (viewMode !== 'day') return;
     touchStartXRef.current = e.touches[0].clientX;
@@ -567,8 +610,12 @@ export default function App() {
         </button>
       </div>
 
-      {/* SOUS EN-TÊTE */}
-      <div className="sub-header">
+      {/* SOUS EN-TÊTE — swipe gauche/droite pour changer de jour (mode jour) ou de semaine (mode semaine) */}
+      <div
+        className="sub-header"
+        onTouchStart={handleSubHeaderTouchStart}
+        onTouchEnd={handleSubHeaderTouchEnd}
+      >
         <button type="button" className="arrow-btn" onClick={handlePrev}>‹</button>
 
         <div className="date-center-box" onClick={jumpToToday}>
@@ -702,6 +749,7 @@ export default function App() {
           subject={taskModalSubject}
           subjectColor={taskModalColor}
           editTask={editingTask}
+          courses={courses}
           onClose={() => { setShowTaskModal(false); setEditingTask(null); }}
           onSave={handleAddTask}
         />

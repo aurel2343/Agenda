@@ -1,11 +1,25 @@
+/**
+ * ═══════════════════════════════════════════════════════════════════════════════
+ * AGENDA ESME — TaskModal.jsx
+ * Modal bottom-sheet pour la création et l'édition d'une tâche.
+ * Permet de définir :
+ * - Le titre de la tâche
+ * - Le niveau d'importance (Faible, Normale, Haute, Urgente)
+ * - La date d'échéance via le MiniCalendar
+ * - Les rappels programmés (le jour même, veille, 2 à 4 jours avant)
+ * ═══════════════════════════════════════════════════════════════════════════════
+ */
+
 import React, { useState, useEffect } from 'react';
 import { format } from 'date-fns';
 import { fr } from 'date-fns/locale';
 import MiniCalendar from './MiniCalendar';
 
+// Niveaux d'importance : couleurs et étiquettes associées
 export const IMPORTANCE_COLORS = ['#34C759', '#FFD60A', '#FF9500', '#FF3B30'];
 export const IMPORTANCE_LABELS = ['Faible', 'Normale', 'Haute', 'Urgente'];
 
+// Options de notifications de rappel par rapport à la date d'échéance
 export const TASK_NOTIF_OPTIONS = [
   { key: 'same_9h',  label: '9h le jour même',      offsetDays: 0, hour: 9  },
   { key: 'before1',  label: '17h la veille',         offsetDays: 1, hour: 17 },
@@ -14,6 +28,11 @@ export const TASK_NOTIF_OPTIONS = [
   { key: 'before4',  label: '17h 4 jours avant',     offsetDays: 4, hour: 17 },
 ];
 
+/**
+ * Parse une chaîne YYYY-MM-DD en Date locale (évite les décalages de fuseau UTC).
+ * @param {string|null} str - Format YYYY-MM-DD
+ * @returns {Date|null}
+ */
 export const parseDueDate = (str) => {
   if (!str) return null;
   const parts = str.substring(0, 10).split('-').map(Number);
@@ -22,12 +41,16 @@ export const parseDueDate = (str) => {
   return isNaN(d.getTime()) ? null : d;
 };
 
-export const TaskModal = ({ visible, subject, subjectColor, onClose, onSave, editTask = null }) => {
+/**
+ * Modal de création / modification d'une tâche
+ */
+export const TaskModal = ({ visible, subject, subjectColor, onClose, onSave, editTask = null, courses = [] }) => {
   const [title, setTitle] = useState('');
   const [importance, setImportance] = useState(0);
   const [dueDate, setDueDate] = useState(null);
   const [notifs, setNotifs] = useState({});
   const [showCal, setShowCal] = useState(false);
+
 
   useEffect(() => {
     if (visible) {
@@ -146,6 +169,8 @@ export const TaskModal = ({ visible, subject, subjectColor, onClose, onSave, edi
             <MiniCalendar
               selectedDate={dueDate}
               onSelectDate={(d) => { setDueDate(d); setShowCal(false); }}
+              courses={courses}
+              subject={subject}
             />
           )}
 

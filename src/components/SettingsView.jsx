@@ -1,3 +1,15 @@
+/**
+ * ═══════════════════════════════════════════════════════════════════════════════
+ * AGENDA ESME — SettingsView.jsx
+ * Écran de configuration de l'application :
+ * - Synchronisation du lien ICS
+ * - Paramétrage des alertes de cours (30 min et 10 min avant)
+ * - Masquage des week-ends sans cours
+ * - Mode détail en vue jour
+ * - Réglage de la taille de texte (stepper multiplicateur 0.7x -> 2.0x)
+ * ═══════════════════════════════════════════════════════════════════════════════
+ */
+
 import React from 'react';
 
 export const SettingsView = ({
@@ -19,6 +31,7 @@ export const SettingsView = ({
   hasExistingIcs,
   onBackToCalendar
 }) => {
+
   return (
     <div className="config-container">
       <div className="config-header-row">

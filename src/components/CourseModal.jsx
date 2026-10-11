@@ -1,3 +1,14 @@
+/**
+ * ═══════════════════════════════════════════════════════════════════════════════
+ * AGENDA ESME — CourseModal.jsx
+ * Modal affiché lors du clic sur un cours dans la grille de l'emploi du temps.
+ * Affiche :
+ * - Le récapitulatif complet du cours (date, horaires, salle, formateurs)
+ * - La liste des devoirs et tâches spécifiques à cette matière
+ * - Un raccourci direct pour ajouter une tâche liée à ce cours
+ * ═══════════════════════════════════════════════════════════════════════════════
+ */
+
 import React from 'react';
 import { format } from 'date-fns';
 import { fr } from 'date-fns/locale';
@@ -7,13 +18,17 @@ import { IMPORTANCE_COLORS, IMPORTANCE_LABELS, parseDueDate } from './TaskModal'
 export const CourseModal = ({ course, tasks, onClose, onAddTask, onToggleTask, onDeleteTask, onEditTask }) => {
   if (!course) return null;
 
+  // Extraction du nom de la matière (ex: "Mathématiques 2")
   const subject = extractSubject(course.title);
+
+  // Filtrage et tri des tâches liées à cette matière (non terminées en haut, par importance)
   const courseTasks = tasks
     .filter(t => t.subject === subject)
     .sort((a, b) => {
       if (a.done !== b.done) return a.done ? 1 : -1;
       return b.importance - a.importance;
     });
+
 
   return (
     <div className="modal-overlay">
